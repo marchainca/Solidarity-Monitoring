@@ -36,6 +36,7 @@ const LoginScreen = ({ navigation }) => {
           email: data.content.user.email,
           role: data.content.user.role,
           profileImageUrl: data.content.user.urlImage,
+          accessToken: data.content.accessToken,
         });
 
         // Navegar a la pantalla principal

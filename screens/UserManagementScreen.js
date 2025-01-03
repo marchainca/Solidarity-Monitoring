@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -7,29 +7,93 @@ import {
   StyleSheet,
   FlatList,
   Alert,
+  Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import CryptoJS from 'crypto-js';
 import { Picker } from '@react-native-picker/picker';
+import { UserContext } from '../context/UserContext'; // Para obtener el token desde el contexto
 
-const UserManagementScreen = ({navigation}) => {
+const UserManagementScreen = ({ navigation }) => {
+  const { user } = useContext(UserContext); // Obtener el usuario logueado y su token
+  const [users, setUsers] = useState([]);
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [gender, setGender] = useState('');
+  const [idNumber, setIdNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const [birthday, setBirthday] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   useEffect(() => {
     navigation.setOptions({
       headerTitle: 'Registrar nuevo usuario',
     });
   }, []);
 
-  const [users, setUsers] = useState([]);
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('');
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      const formattedDate = selectedDate.toISOString().split('T')[0];
+      setBirthday(formattedDate);
+    }
+  };
 
-  const addUser = () => {
-    if (!email) {
-      Alert.alert('Error', 'El correo electrónico es obligatorio.');
+  const registerUser = async () => {
+    if (!email || !name || !idNumber || !password || !birthday || !gender) {
+      Alert.alert('Error', 'Todos los campos son obligatorios.');
       return;
     }
 
-    setUsers([...users, { id: Date.now().toString(), email }]);
-    setEmail('');
+    try {
+      console.log("Data User: ", user )
+      const response = await fetch('http://192.168.1.33:3000/letsHelp/Colombia/users/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${user.accessToken}`, // Usar el token del contexto
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          idNumber,
+          birthdate: birthday,
+          urlImage: 'https://storage.googleapis.com/bucket-let-s-help/defaultPerfil.png', // URL por defecto si está vacío
+          password: CryptoJS.SHA256(password).toString(),
+          gender: gender,
+          role: "Collaborator"
+        }),
+      });
+      const dataResponse = await response.json();
+      console.log("Respuesta creacion usuario:");
+      console.log(dataResponse);
+      if (response.ok) {
+        Alert.alert('Éxito', 'Usuario registrado correctamente');
+        setUsers([
+          ...users,
+          {
+            id: Date.now().toString(),
+            name,
+            email,
+            idNumber,
+            birthday,
+            gender,
+          },
+        ]);
+        setEmail('');
+        setName('');
+        setIdNumber('');
+        setPassword('');
+        setBirthday('');
+        setGender('');
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Error', errorData.message || 'Ocurrió un error al registrar el usuario');
+      }
+    } catch (error) {
+      console.error('Error al registrar el usuario:', error);
+      Alert.alert('Error', 'No se pudo conectar con el servidor');
+    }
   };
 
   const removeUser = (id) => {
@@ -42,9 +106,10 @@ const UserManagementScreen = ({navigation}) => {
 
       <TextInput
         style={styles.input}
-        placeholder="Correo Electrónico"
-        value={email}
-        onChangeText={setEmail}
+        placeholder="Número de Identificación"
+        value={idNumber}
+        onChangeText={setIdNumber}
+        keyboardType="numeric"
       />
 
       <TextInput
@@ -54,18 +119,53 @@ const UserManagementScreen = ({navigation}) => {
         onChangeText={setName}
       />
 
-      <Picker
-        selectedValue={role}
+      <TextInput
         style={styles.input}
-        onValueChange={(itemValue) => setRole(itemValue)}
+        placeholder="Correo Electrónico"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+      />
+
+      <Picker
+        selectedValue={gender}
+        style={styles.picker}
+        onValueChange={(itemValue) => setGender(itemValue)}
       >
-        <Picker.Item label="Seleccione un rol" value="" />
-        <Picker.Item label="Administrador" value="Admin" />
-        <Picker.Item label="Colaborador" value="collaborator" />
+        <Picker.Item label="Seleccione el genero" value="" />
+        <Picker.Item label="Masculino" value="User" />
+        <Picker.Item label="Femenino" value="Admin" />
       </Picker>
 
-      <TouchableOpacity style={styles.button} onPress={addUser}>
-        <Text style={styles.buttonText}>Agregar Usuario</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Contraseña"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry={true}
+      />
+
+      <TouchableOpacity
+        style={styles.input}
+        onPress={() => setShowDatePicker(true)}
+      >
+        <Text style={styles.dateText}>
+          {birthday ? birthday : 'Seleccionar Fecha de Cumpleaños'}
+        </Text>
+      </TouchableOpacity>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+          maximumDate={new Date()}
+        />
+      )}
+
+      <TouchableOpacity style={styles.button} onPress={registerUser}>
+        <Text style={styles.buttonText}>Registrar Usuario</Text>
       </TouchableOpacity>
 
       <FlatList
@@ -103,6 +203,18 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: '#fff',
     marginBottom: 15,
+  },
+  picker: {
+    height: 52,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    backgroundColor: '#fff',
+  },
+  dateText: {
+    color: '#000',
   },
   button: {
     backgroundColor: '#2196f3',
