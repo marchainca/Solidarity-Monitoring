@@ -90,6 +90,14 @@ const NewMemberScreen = ({ navigation }) => {
 
       <TextInput
         style={styles.input}
+        placeholder="Fecha Nacimiento"
+        keyboardType="number-pad"
+        value={email}
+        onChangeText={setEmail}
+      />
+
+      <TextInput
+        style={styles.input}
         placeholder="Correo Electrónico"
         keyboardType="email-address"
         value={email}

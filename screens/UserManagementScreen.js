@@ -8,6 +8,7 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 
 const UserManagementScreen = ({navigation}) => {
   useEffect(() => {
@@ -18,6 +19,8 @@ const UserManagementScreen = ({navigation}) => {
 
   const [users, setUsers] = useState([]);
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [role, setRole] = useState('');
 
   const addUser = () => {
     if (!email) {
@@ -43,6 +46,23 @@ const UserManagementScreen = ({navigation}) => {
         value={email}
         onChangeText={setEmail}
       />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Nombres Completos"
+        value={name}
+        onChangeText={setName}
+      />
+
+      <Picker
+        selectedValue={role}
+        style={styles.input}
+        onValueChange={(itemValue) => setRole(itemValue)}
+      >
+        <Picker.Item label="Seleccione un rol" value="" />
+        <Picker.Item label="Administrador" value="Admin" />
+        <Picker.Item label="Colaborador" value="collaborator" />
+      </Picker>
 
       <TouchableOpacity style={styles.button} onPress={addUser}>
         <Text style={styles.buttonText}>Agregar Usuario</Text>
