@@ -8,32 +8,42 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { CameraView } from 'expo-camera';
 import { CameraPermissionContext } from '../context/CameraPermissionContext';
 
 const NewMemberScreen = ({ navigation }) => {
-
   useEffect(() => {
     navigation.setOptions({
       headerTitle: 'Registro Nuevo Integrante',
     });
   }, []);
-  
-    const [facing, setFacing] = useState('front');
-    const { hasCameraPermission, errorMessage, setErrorMessage } = useContext(CameraPermissionContext);
-    const cameraRef = React.useRef(null);
-    const [name, setName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [email, setEmail] = useState('');
-    const [isCameraVisible, setIsCameraVisible] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
 
-    useEffect(() => {
-        if (hasCameraPermission === null || hasCameraPermission === false) {
-          setErrorMessage('Permiso de cámara no concedido. Verifica en los ajustes.');
-        }
-      }, [hasCameraPermission]);
+  const [facing, setFacing] = useState('front');
+  const { hasCameraPermission, errorMessage, setErrorMessage } = useContext(CameraPermissionContext);
+  const cameraRef = React.useRef(null);
+  const [name, setName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [docType, setDocType] = useState('Cédula de ciudadanía');
+  const [docNumber, setDocNumber] = useState('');
+  const [address, setAddress] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [policyNumber, setPolicyNumber] = useState('');
+  const [emergencyContact, setEmergencyContact] = useState('');
+  const [birthdate, setBirthdate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isCameraVisible, setIsCameraVisible] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    if (hasCameraPermission === null || hasCameraPermission === false) {
+      setErrorMessage('Permiso de cámara no concedido. Verifica en los ajustes.');
+    }
+  }, [hasCameraPermission]);
 
   const handleFacialTraining = async () => {
     setIsCameraVisible(true);
@@ -60,90 +70,211 @@ const NewMemberScreen = ({ navigation }) => {
     }
   };
 
-  const handleSubmit = () => {
-    if (!name || !lastName || !email) {
+  const handleSubmit = async () => {
+    // Validar los campos requeridos
+    if (
+      !name ||
+      !lastName ||
+      !email ||
+      !docNumber ||
+      !address ||
+      !neighborhood ||
+      !policyNumber ||
+      !emergencyContact
+    ) {
       Alert.alert('Error', 'Por favor completa todos los campos.');
       return;
     }
-
-    // Aquí se puede integrar la API para guardar los datos del integrante
-    Alert.alert('Éxito', 'Integrante registrado correctamente.');
+  
+    // Crear el JSON con los datos del formulario
+    const requestData = {
+      name,
+      lastName,
+      email,
+      documentType: docType,
+      documentNumber: docNumber,
+      birthdate: birthdate.toISOString().split('T')[0], // Fecha en formato YYYY-MM-DD
+      address,
+      neighborhood,
+      policyNumber,
+      emergencyContact,
+      facialTraining: {
+        imageBase64: capturedImage || '', // Imagen base64 del entrenamiento facial
+      },
+    };
+  
+    try {
+      // Enviar los datos al backend
+      const response = await fetch('http://your-backend-endpoint.com/api/members', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${yourAccessToken}`, // Si es necesario un token
+        },
+        body: JSON.stringify(requestData),
+      });
+  
+      if (response.ok) {
+        Alert.alert('Éxito', 'Integrante registrado correctamente.');
+        // Opcional: limpiar los campos del formulario después de un envío exitoso
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Error', `Error al registrar el integrante: ${errorData.message}`);
+      }
+    } catch (error) {
+      console.error('Error al registrar el integrante:', error);
+      Alert.alert('Error', 'No se pudo conectar con el servidor.');
+    }
   };
 
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setBirthdate(selectedDate);
+    }
+  };
+
+
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Nuevo Integrante</Text>
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Nuevo Integrante</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Nombres"
-        value={name}
-        onChangeText={setName}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Apellidos"
-        value={lastName}
-        onChangeText={setLastName}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Fecha Nacimiento"
-        keyboardType="number-pad"
-        value={email}
-        onChangeText={setEmail}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Correo Electrónico"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-
-      <TouchableOpacity style={styles.button} onPress={handleFacialTraining}>
-        <Text style={styles.buttonText}>Entrenamiento Facial</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Guardar</Text>
-      </TouchableOpacity>
-
-      {isUploading && (
-        <ActivityIndicator size="large" color="#0000ff" style={styles.loadingIndicator} />
-      )}
-
-      {/* Modal de la cámara */}
-      <Modal visible={isCameraVisible} animationType="slide" transparent={false}>
-        <View style={styles.modalContainer}>
-          <CameraView style={styles.camera} ref={cameraRef} facing={facing}
+        <Text style={styles.label}>Tipo de Documento</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={docType}
+            onValueChange={(itemValue) => setDocType(itemValue)}
+            style={styles.picker}
           >
-            <View style={styles.cameraControls}>
-              <TouchableOpacity
-                style={styles.captureButton}
-                onPress={() => handleCapture()}
-              >
-                <Text style={styles.captureButtonText}>Capturar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setIsCameraVisible(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </CameraView>
+            <Picker.Item label="Tarjeta de identidad" value="Tarjeta de identidad" />
+            <Picker.Item label="Cédula de ciudadanía" value="Cédula de ciudadanía" />
+            <Picker.Item label="Registro civil" value="Registro civil" />
+          </Picker>
         </View>
-      </Modal>
-    </View>
+
+        <Text style={styles.label}>Número de Documento</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Número de Documento"
+          keyboardType="number-pad"
+          value={docNumber}
+          onChangeText={setDocNumber}
+        />
+
+        <Text style={styles.label}>Nombres</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Nombres"
+          value={name}
+          onChangeText={setName}
+        />
+
+        <Text style={styles.label}>Apellidos</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Apellidos"
+          value={lastName}
+          onChangeText={setLastName}
+        />
+
+        <Text style={styles.label}>Fecha de Nacimiento</Text>
+        <TouchableOpacity
+          style={styles.input}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Text>{birthdate.toISOString().split('T')[0]}</Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={birthdate}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+          />
+        )}
+
+        <Text style={styles.label}>Correo Electrónico</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Correo Electrónico"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+
+        <Text style={styles.label}>Dirección</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Dirección"
+          value={address}
+          onChangeText={setAddress}
+        />
+
+        <Text style={styles.label}>Barrio</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Barrio"
+          value={neighborhood}
+          onChangeText={setNeighborhood}
+        />
+
+        <Text style={styles.label}>Número de Póliza</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Número de Póliza"
+          keyboardType="number-pad"
+          value={policyNumber}
+          onChangeText={setPolicyNumber}
+        />
+
+        <Text style={styles.label}>Contacto de Emergencia</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Número de Emergencia"
+          keyboardType="number-pad"
+          value={emergencyContact}
+          onChangeText={setEmergencyContact}
+        />
+
+        <TouchableOpacity style={styles.button} onPress={handleFacialTraining}>
+          <Text style={styles.buttonText}>Entrenamiento Facial</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.buttonText}>Guardar</Text>
+        </TouchableOpacity>
+
+        {isUploading && (
+          <ActivityIndicator size="large" color="#0000ff" style={styles.loadingIndicator} />
+        )}
+
+        {/* Modal de la cámara */}
+        <Modal visible={isCameraVisible} animationType="slide" transparent={false}>
+          <View style={styles.modalContainer}>
+            <CameraView style={styles.camera} ref={cameraRef} facing={facing}>
+              <View style={styles.cameraControls}>
+                <TouchableOpacity style={styles.captureButton} onPress={() => handleCapture()}>
+                  <Text style={styles.captureButtonText}>Capturar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setIsCameraVisible(false)}>
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </CameraView>
+          </View>
+        </Modal>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+  },
   container: {
     flex: 1,
     padding: 20,
@@ -155,6 +286,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -162,6 +298,17 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: '#fff',
     marginBottom: 15,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    marginBottom: 15,
+    backgroundColor: '#fff',
+  },
+  picker: {
+    height: 50,
+    width: '100%',
   },
   button: {
     backgroundColor: '#2196f3',

@@ -12,6 +12,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import CryptoJS from 'crypto-js';
 import { Picker } from '@react-native-picker/picker';
+//import 'dotenv/config';
 import { UserContext } from '../context/UserContext'; // Para obtener el token desde el contexto
 
 const UserManagementScreen = ({ navigation }) => {
@@ -47,7 +48,8 @@ const UserManagementScreen = ({ navigation }) => {
 
     try {
       console.log("Data User: ", user )
-      const response = await fetch('http://192.168.1.33:3000/letsHelp/Colombia/users/', {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL + "users";
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

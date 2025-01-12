@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Image } from 'react-native';
+//import 'dotenv/config';
 import CryptoJS from 'crypto-js';
 import { UserContext } from '../context/UserContext';
 
@@ -14,8 +15,9 @@ const LoginScreen = ({ navigation }) => {
       //encriptacion 
       const hashPassword = CryptoJS.SHA256(password).toString();
       console.log("hashPassword", hashPassword);
-
-      const response = await fetch('http://192.168.1.33:3000/letsHelp/Colombia/auth/login', {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL + 'auth/login' ;
+      console.log("Url de autenticación: ", apiUrl)
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -43,6 +45,7 @@ const LoginScreen = ({ navigation }) => {
         navigation.navigate("Home");
       } else {
         // Manejo de error en caso de credenciales inválidas
+        console.log("else error", response)
         Alert.alert("Error", "Credenciales incorrectas");
       }
     } catch (error) {
