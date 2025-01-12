@@ -6,59 +6,99 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
+  Alert,
 } from 'react-native';
 import { CameraView } from 'expo-camera';
 import { CameraPermissionContext } from '../context/CameraPermissionContext';
+import { UserContext } from '../context/UserContext';
 
 const FaceRecognitionScreen = ({ navigation }) => {
-  const [facing, setFacing] = useState('front'); //seleccionar camara
+  const [facing, setFacing] = useState('front');
   const { hasCameraPermission, errorMessage, setErrorMessage } = useContext(CameraPermissionContext);
-  const [isRecognizing, setIsRecognizing] = useState(false);
   const cameraRef = React.useRef(null);
-  
+  const { user } = useContext(UserContext); // Obtener token de usuario
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [isCameraVisible, setIsCameraVisible] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({
       headerTitle: 'Reconocimiento Facial',
     });
     if (hasCameraPermission === null || hasCameraPermission === false) {
-      setErrorMessage('Permiso de cámara no concedido. Verifica en los ajustes.');
+      setErrorMessage(
+        'Permiso de cámara no concedido. Verifica en los ajustes.'
+      );
     }
   }, [hasCameraPermission]);
 
   const handleFaceRecognition = async () => {
+
     if (!cameraRef.current) {
       setErrorMessage('Error: Cámara no disponible.');
       return;
     }
+    //setIsCameraVisible(true);
 
     setIsRecognizing(true);
 
     try {
-      setTimeout(() => {
-        const isSuccessful = 1;
-        if (isSuccessful) {
-          navigation.navigate('AttendanceFormWithData', {
-            recognizedData: {
-              firstName: 'John Alexander',
-              lastName: 'Restrepo Hincapié',
-              age: '41',
-              documentType: 'C.C',
-              documentNumber: '4514538',
-              email: 'correo@email.com',
-              address: 'Calle 45 N° 20A-59',
-              neighborhood: 'Villas de CAña Miel',
-              policy: '1145236',
-              emergencyContact: '3177582247',
-            },
-          });
-        } else {
-          setErrorMessage('Error en el reconocimiento facial. Intente nuevamente.');
+      // Capturar la imagen en base64
+      const capturedPhoto = await cameraRef.current.takePictureAsync({
+        base64: true,
+      });
+
+      setIsCameraVisible(false);
+
+      // Crear la solicitud al backend
+      const requestData = {
+        imageBase64: "data:image/jpg;base64," + capturedPhoto.base64,
+      };
+
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}recognition/identify`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${user.accessToken}`, // Token del usuario logueado
+          },
+          body: JSON.stringify(requestData),
         }
-        setIsRecognizing(false);
-      }, 3000);
+      );
+
+      const responseData = await response.json();
+
+      console.log("Respuesta del backen en FaceRecognitionScreen: ", responseData)
+
+      if (response.ok) {
+        // Si el reconocimiento facial es exitoso, navegar al formulario con los datos recibidos
+        console.log("Reconocimiento exitoso")
+        navigation.navigate('AttendanceFormWithData', {
+          //recognizedData: responseData.content.data, // Datos retornados por el backend
+          recognizedData: {
+            firstName: responseData.content.data.name,
+            lastName: responseData.content.data.lastName,
+            age: responseData.content.data.birthdate,
+            documentType: responseData.content.data.documentType,
+            documentNumber: responseData.content.data.documentNumber,
+            email: responseData.content.data.email,
+            address: responseData.content.data.address,
+            neighborhood: responseData.content.data.neighborhood,
+            policy: responseData.content.data.policyNumber,
+            emergencyContact: responseData.content.data.emergencyContact,
+          },
+        });
+      } else {
+        // Mostrar mensaje de error del backend
+        //const errorData = await response.json();
+        console.log("Else")
+        Alert.alert('Error', `No fué posible registrar el integrante: ${responseData.message}`);
+        setErrorMessage(responseData.message || 'Error en el reconocimiento.');
+      }
     } catch (error) {
-      setErrorMessage('Error inesperado: ' + error.message);
+      console.error('Error en el reconocimiento facial:', error);
+      setErrorMessage('Error inesperado al realizar el reconocimiento.');
+    } finally {
       setIsRecognizing(false);
     }
   };
@@ -66,26 +106,31 @@ const FaceRecognitionScreen = ({ navigation }) => {
   if (hasCameraPermission === false) {
     return (
       <View style={styles.container}>
-        <Text>No se concedió permiso para usar la cámara. Habilítelo en los ajustes.</Text>
+        <Text>
+          No se concedió permiso para usar la cámara. Habilítelo en los ajustes.
+        </Text>
       </View>
     );
   }
 
-
   return (
     <View style={styles.container}>
       {hasCameraPermission && (
-        <CameraView  style={styles.camera} ref={cameraRef} facing={facing} />
+        <CameraView style={styles.camera} ref={cameraRef} facing={facing} />
       )}
       {isRecognizing && (
-        <ActivityIndicator size="large" color="#0000ff" style={styles.loadingIndicator} />
+        <ActivityIndicator
+          size="large"
+          color="#0000ff"
+          style={styles.loadingIndicator}
+        />
       )}
       <TouchableOpacity style={styles.button} onPress={handleFaceRecognition}>
         <Text style={styles.buttonText}>Iniciar Reconocimiento Facial</Text>
       </TouchableOpacity>
       <Modal
-        visible={!!errorMessage}
-        transparent={true}
+        visible={isCameraVisible}
+        transparent={false}
         animationType="slide"
         onRequestClose={() => setErrorMessage('')}
       >

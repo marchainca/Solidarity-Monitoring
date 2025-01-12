@@ -23,6 +23,7 @@ const ReportsScreen = () => {
   const [loading, setLoading] = useState(false);
 
   const fetchUserData = async () => {
+    console.log("Data de user:", user )
     if (!id) {
       Alert.alert('Error', 'Por favor introduce una identificación válida');
       return;
@@ -30,30 +31,42 @@ const ReportsScreen = () => {
 
     setLoading(true);
     try {
-      // Simulación de la llamada a la API
-      setTimeout(() => {
-        const fakeData = {
-            name: 'Alexander',
-            lastName: 'Hincapié',
-            profileImage: 'https://southcentralus1-mediap.svc.ms/transform/thumbnail?provider=spo&farmid=194114&inputFormat=jpg&cs=MDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDQ4MTcxMGE0fFNQTw&docid=https%3A%2F%2Fmy.microsoftpersonalcontent.com%2F_api%2Fv2.0%2Fdrives%2Fb!b283VhQeqUmzY5SYwg_4Uq_NBHTEoOxBsnZud7Wx-D34HrhcdR0NRqyeaLZdtBGr%2Fitems%2F01VIV2P5AONA5XFN7BVYQIBCZ4AEAAAAAA%3Ftempauth%3Dv1e.eyJzaXRlaWQiOiI1NjM3NmY2Zi0xZTE0LTQ5YTktYjM2My05NDk4YzIwZmY4NTIiLCJhcHBpZCI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDA0ODE3MTBhNCIsImF1ZCI6IjAwMDAwMDAzLTAwMDAtMGZmMS1jZTAwLTAwMDAwMDAwMDAwMC9teS5taWNyb3NvZnRwZXJzb25hbGNvbnRlbnQuY29tQDkxODgwNDBkLTZjNjctNGM1Yi1iMTEyLTM2YTMwNGI2NmRhZCIsImV4cCI6IjE3MzE2MTgwMDAifQ.x_SqeJqeb9s53jnOJqQbdZ4gzeru-LR7otpGZpCIRqIoNRrnBfaOFmiP1PkAK8M22rcOu7m-Cfbp3bESb8DWgDgvDg-m3nq1Yh-dtKr5VSuMwHw7BEshuP0N20w7PGISNM4RAbhnpJqMkMPg3PLHpoOYII7J_j2s6gotLn-W1xYGYgFFhXSFW2wxz2axwTisZvPx45fdizph2jkjwCLRTTEzVJ1K3t6x0-ZcCSVcSz2D9tcB3eHmzuP6d3AFsyeLdEIicUv77XNplZhSnlxhvO1nNWUZcR1ncT9ayAaeCDIxbxWe8eMI4weTlWvXWwZYaOwhR3IlaPGg73YMem50OUTZhNX2f6346A2VIhn-2rdCgXSMQ9uPITnYPVD94x1Q.zSO3TJMe5pYIKy64OYtF7lHQXg5zFi5j6nDResdN7VI%26version%3DPublished&cb=63519352448&encodeFailures=1&width=354&height=472',
-        };
+      const requestData = {
+        identificacion: id,
+      };
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL + "attendance/identify";
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${user.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
 
-        setName(fakeData.name);
-        setLastName(fakeData.lastName);
-        setProfileImage(fakeData.profileImage);
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Data: ", data)
+        setName(data.content.name);
+        setLastName(data.content.lastName);
+        setProfileImage(`data:image/jpeg;base64,${data.content.profileImage}`);
         setLoading(false);
-      }, 2000);
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Error', `No se pudo obtener los datos: ${errorData.message}`);
+        setLoading(false);
+      }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo obtener los datos del usuario.');
+      console.error('Error al obtener los datos del usuario:', error);
+      Alert.alert('Error', 'No se pudo conectar con el servidor.');
       setLoading(false);
     }
   };
 
   const handleReportSubmit = () => {
-    // Mostrar notificación
     Toast.show({
       type: 'success',
-      text1: 'Alexander Hincapié',
+      text1: `${name} ${lastName}`,
       text2: 'Ha realizado un reporte.',
       visibilityTime: 8000,
     });
@@ -111,10 +124,10 @@ const ReportsScreen = () => {
       </View>
 
       <View style={styles.formGroup}>
-        <Text style={styles.label}>Reporte creador por</Text>
+        <Text style={styles.label}>Reporte creado por</Text>
         <TextInput
           style={styles.input}
-          value={`${user?.name} ${user?.lastName}`}
+          value={`${user?.name}`}
           editable={false}
         />
       </View>

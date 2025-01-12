@@ -14,14 +14,17 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { CameraView } from 'expo-camera';
 import { CameraPermissionContext } from '../context/CameraPermissionContext';
+import { UserContext } from '../context/UserContext';
 
 const NewMemberScreen = ({ navigation }) => {
+  
   useEffect(() => {
     navigation.setOptions({
       headerTitle: 'Registro Nuevo Integrante',
     });
   }, []);
 
+  const { user } = useContext(UserContext);
   const [facing, setFacing] = useState('front');
   const { hasCameraPermission, errorMessage, setErrorMessage } = useContext(CameraPermissionContext);
   const cameraRef = React.useRef(null);
@@ -38,6 +41,9 @@ const NewMemberScreen = ({ navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isCameraVisible, setIsCameraVisible] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [photoBase64, setPhotoBase64] = useState('');
+  
+ 
 
   useEffect(() => {
     if (hasCameraPermission === null || hasCameraPermission === false) {
@@ -52,15 +58,13 @@ const NewMemberScreen = ({ navigation }) => {
   const handleCapture = async () => {
     try {
       if (cameraRef.current) {
-        const photo = await cameraRef.current.takePictureAsync({ base64: true });
+        //photo = await cameraRef.current.takePictureAsync({ base64: true });
+        const capturedPhoto = await cameraRef.current.takePictureAsync({ base64: true });
+        
+        setPhotoBase64(capturedPhoto.base64); 
+        console.log('Captura de foto (Base64):', capturedPhoto);
         setIsCameraVisible(false);
         setIsUploading(true);
-
-        // Simular una llamada a una API para enviar los datos del entrenamiento facial
-        setTimeout(() => {
-          setIsUploading(false);
-          Alert.alert('Éxito', 'Entrenamiento facial completado.');
-        }, 3000);
       } else {
         throw new Error('No se pudo acceder a la cámara.');
       }
@@ -98,18 +102,18 @@ const NewMemberScreen = ({ navigation }) => {
       neighborhood,
       policyNumber,
       emergencyContact,
-      facialTraining: {
-        imageBase64: capturedImage || '', // Imagen base64 del entrenamiento facial
-      },
+      imageBase64: "data:image/jpg;base64," + photoBase64, // Imagen base64 del entrenamiento facial
     };
   
     try {
       // Enviar los datos al backend
-      const response = await fetch('http://your-backend-endpoint.com/api/members', {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL + 'recognition/register' ;
+      console.log("Data a enviar", requestData)
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${yourAccessToken}`, // Si es necesario un token
+          Authorization: `Bearer ${user.accessToken}`, // Si es necesario un token
         },
         body: JSON.stringify(requestData),
       });

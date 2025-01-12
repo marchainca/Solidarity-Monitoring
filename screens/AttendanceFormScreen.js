@@ -1,37 +1,86 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useContext } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { UserContext } from '../context/UserContext';
 
 const AttendanceFormScreen = ({ navigation }) => {
-
   useEffect(() => {
     navigation.setOptions({
       headerTitle: 'Registro de Inasistencias',
     });
   }, []);
 
+  const { user } = useContext(UserContext);
   const [activity, setActivity] = useState('');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    age: '',
-    documentType: '',
     documentNumber: '',
-    email: '',
-    address: '',
-    neighborhood: '',
-    policy: '',
-    emergencyContact: '',
+    reason: '',
   });
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleSubmit = () => {
-    console.log('Formulario enviado:', formData);
-    alert('Registro de inasistencia enviado');
-    // Aquí puedes llamar a la API para enviar los datos del formulario
+  const handleDateChange = (event, date) => {
+    setShowDatePicker(false);
+    if (date) {
+      setSelectedDate(date);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!activity || !formData.firstName || !formData.lastName || !formData.documentNumber || !formData.reason) {
+      Alert.alert('Error', 'Por favor complete todos los campos.');
+      return;
+    }
+
+    const requestData = {
+      identificacion: formData.documentNumber ,
+      actividad: activity,
+      motivo: formData.reason,
+      fecha: selectedDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
+    };
+
+    try {
+      setIsSubmitting(true);
+      console.log("Data antes de enviar: ", requestData)
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL + "attendance/absences"; // Reemplazar con la URL real
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${user.accessToken}`,
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      if (response.ok) {
+        Alert.alert('Éxito', 'Inasistencia registrada correctamente.');
+        navigation.goBack();
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Error', `No se pudo registrar la inasistencia: ${errorData.message}`);
+      }
+    } catch (error) {
+      console.error('Error al registrar la inasistencia:', error);
+      Alert.alert('Error', 'No se pudo conectar con el servidor.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -66,21 +115,6 @@ const AttendanceFormScreen = ({ navigation }) => {
           onChangeText={(text) => handleInputChange('lastName', text)}
         />
 
-        <Text style={styles.label}>Edad:</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.age}
-          onChangeText={(text) => handleInputChange('age', text)}
-          keyboardType="numeric"
-        />
-
-        <Text style={styles.label}>Tipo de Documento:</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.documentType}
-          onChangeText={(text) => handleInputChange('documentType', text)}
-        />
-
         <Text style={styles.label}>N° Documento:</Text>
         <TextInput
           style={styles.input}
@@ -89,48 +123,38 @@ const AttendanceFormScreen = ({ navigation }) => {
           keyboardType="numeric"
         />
 
-        <Text style={styles.label}>Email:</Text>
+        <Text style={styles.label}>Fecha:</Text>
+        <TouchableOpacity
+          style={styles.input}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Text>{selectedDate.toISOString().split('T')[0]}</Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+          />
+        )}
+        <Text style={styles.label}>Motivo de la inasistencia:</Text>
         <TextInput
           style={styles.input}
-          value={formData.email}
-          onChangeText={(text) => handleInputChange('email', text)}
-          keyboardType="email-address"
-        />
-
-        <Text style={styles.label}>Dirección:</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.address}
-          onChangeText={(text) => handleInputChange('address', text)}
-        />
-
-        <Text style={styles.label}>Barrio:</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.neighborhood}
-          onChangeText={(text) => handleInputChange('neighborhood', text)}
-        />
-
-        <Text style={styles.label}>Póliza:</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.policy}
-          onChangeText={(text) => handleInputChange('policy', text)}
-          keyboardType="numeric"
-        />
-
-        <Text style={styles.label}>Contacto de Emergencia:</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.emergencyContact}
-          onChangeText={(text) => handleInputChange('emergencyContact', text)}
-          keyboardType="phone-pad"
+          value={formData.reason}
+          onChangeText={(text) => handleInputChange('reason', text)}
         />
       </View>
 
       {/* Botón para enviar */}
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitButtonText}>Registrar Inasistencia</Text>
+      <TouchableOpacity
+        style={styles.submitButton}
+        onPress={handleSubmit}
+        disabled={isSubmitting}
+      >
+        <Text style={styles.submitButtonText}>
+          {isSubmitting ? 'Registrando...' : 'Registrar Inasistencia'}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -173,6 +197,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingHorizontal: 10,
     marginBottom: 15,
+    justifyContent: 'center',
   },
   submitButton: {
     marginTop: 20,
