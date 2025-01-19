@@ -40,7 +40,7 @@ const LoginScreen = ({ navigation }) => {
           role: data.content.user.role,
           profileImageUrl: data.content.user.urlImage,
           accessToken: data.content.accessToken,
-          birthdate:data.content.birthdate
+          birthdate:data.content.user.birthdate
         });
 
         // Navegar a la pantalla principal

@@ -10,16 +10,32 @@ import {
   ScrollView,
 } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
+import CryptoJS from 'crypto-js';
 import { UserContext } from '../context/UserContext';
 
 const EditProfileScreen = () => {
   // Función para convertir la fecha de "DD/MM/YYYY" a "YYYY-MM-DD"
   const parseDate = (dateString) => {
     if (!dateString) return new Date(); // Si no hay fecha, usar la fecha actual
-    if (dateString instanceof Date) return dateString; // Si ya es un objeto Date, retornarlo directamente
-    const [day, month, year] = dateString.split('/');
-    return new Date(`${year}-${month}-${day}`);
+  
+    // Si el valor es un objeto Date válido, devuélvelo tal cual
+    if (dateString instanceof Date && !isNaN(dateString)) {
+      return dateString;
+    }
+  
+    // Si es un string, intentar convertirlo a Date
+    try {
+      const date = new Date(dateString);
+      if (!isNaN(date)) return date;
+    } catch (error) {
+      console.error('Error al convertir la fecha:', error);
+    }
+  
+    // Como último recurso, devuelve la fecha actual
+    return new Date();
   };
+  
 
   const { user, updateUser } = useContext(UserContext);
   const [profileImage, setProfileImage] = useState(user?.profileImageUrl || '');
@@ -29,13 +45,39 @@ const EditProfileScreen = () => {
   const [birthdate, setBirthdate] = useState(parseDate(user?.birthdate));
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  console.log("User->", user)
+  //console.log("User->", user)
   const handleDateChange = (event, selectedDate) => {
     if (selectedDate) setBirthdate(selectedDate);
   };
 
-  const handleChangeImage = () => {
-    Alert.alert('Función no implementada', 'Cambiar imagen de perfil.');
+   // Cambiar imagen de perfil
+   const handleChangeImage = async () => {
+    try {
+      // Pedir permisos para acceder a la galería
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permiso denegado', 'Es necesario otorgar permisos para cambiar la imagen.');
+        return;
+      }
+
+      // Abrir la galería para seleccionar una imagen
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes:  ['images'],
+        allowsEditing: true,
+        aspect: [1, 1], // Relación de aspecto 1:1 (cuadrada)
+        quality: 0.8, // Calidad de la imagen (80%)
+        base64: true,
+      });
+
+      if (!pickerResult.canceled) {
+        // Actualizar el estado con la nueva imagen
+        setProfileImage(`data:image/jpeg;base64,${pickerResult.assets[0].base64}`);
+        Alert.alert('Éxito', 'Imagen de perfil actualizada.');
+      }
+    } catch (error) {
+      console.error('Error al cambiar la imagen de perfil:', error);
+      Alert.alert('Error', 'No se pudo cambiar la imagen de perfil.');
+    }
   };
 
   const handleSaveChanges = async () => {
@@ -45,20 +87,28 @@ const EditProfileScreen = () => {
       return;
     }
 
-    // Lógica para guardar cambios
-    const updatedData = {
-      profileImage,
-      name,
-      email,
-      idNumber,
-      birthdate: birthdate instanceof Date ? birthdate.toISOString().split('T')[0] : '',
-      password,
-    };
+    // Solo incluir campos que hayan cambiado
+    const updatedData = {};
+    if (profileImage !== user?.profileImageUrl) updatedData.urlImage = profileImage;
+    if (name !== user?.name) updatedData.name = name;
+    if (email !== user?.email) updatedData.email = email;
+    if (idNumber !== user?.idNumber) updatedData.idNumber = idNumber;
+    if (birthdate.toISOString().split('T')[0] !== user?.birthdate) {
+      updatedData.birthdate = birthdate.toISOString().split('T')[0];
+    }
+    if (password) updatedData.password = CryptoJS.SHA256(password).toString();
+
+    // Verificar si hay cambios
+    if (Object.keys(updatedData).length === 0) {
+      Alert.alert('Sin cambios', 'No hay cambios para guardar.');
+      return;
+    }
 
     try {
-      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}user/update`;
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}users/:id=${user.id}`;
+      console.log("Data enviada actualizar perfil: ", updatedData)
       const response = await fetch(apiUrl, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           Authorization: `Bearer ${user.accessToken}`,
           'Content-Type': 'application/json',
@@ -67,6 +117,7 @@ const EditProfileScreen = () => {
       });
 
       if (response.ok) {
+        console.log(response);
         Alert.alert('Éxito', 'Perfil actualizado correctamente.');
         updateUser(updatedData); // Actualizar el contexto con los nuevos datos
       } else {

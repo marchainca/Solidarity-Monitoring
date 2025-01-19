@@ -58,7 +58,7 @@ const AttendanceFormScreen = ({ navigation }) => {
     try {
       setIsSubmitting(true);
       console.log("Data antes de enviar: ", requestData)
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL + "attendance/absences"; // Reemplazar con la URL real
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL + "attendance/absences";
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {

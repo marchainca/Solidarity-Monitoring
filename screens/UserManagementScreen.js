@@ -12,7 +12,6 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import CryptoJS from 'crypto-js';
 import { Picker } from '@react-native-picker/picker';
-//import 'dotenv/config';
 import { UserContext } from '../context/UserContext'; // Para obtener el token desde el contexto
 
 const UserManagementScreen = ({ navigation }) => {
@@ -135,8 +134,9 @@ const UserManagementScreen = ({ navigation }) => {
         onValueChange={(itemValue) => setGender(itemValue)}
       >
         <Picker.Item label="Seleccione el genero" value="" />
-        <Picker.Item label="Masculino" value="User" />
-        <Picker.Item label="Femenino" value="Admin" />
+        <Picker.Item label="Masculino" value="M" />
+        <Picker.Item label="Femenino" value="F" />
+        <Picker.Item label="Otro" value="O" />
       </Picker>
 
       <TextInput
@@ -152,7 +152,7 @@ const UserManagementScreen = ({ navigation }) => {
         onPress={() => setShowDatePicker(true)}
       >
         <Text style={styles.dateText}>
-          {birthday ? birthday : 'Seleccionar Fecha de Cumpleaños'}
+          {birthday ? birthday : 'Seleccionar Fecha de Nacimiento'}
         </Text>
       </TouchableOpacity>
 

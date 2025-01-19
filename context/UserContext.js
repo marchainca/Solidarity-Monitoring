@@ -7,6 +7,14 @@ export const UserContext = createContext();
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
+  // Función para actualizar el usuario
+  const updateUser = (updatedData) => {
+    setUser((prevUser) => ({
+      ...prevUser,
+      ...updatedData,
+    }));
+  };
+
   const login = (userData) => {
     setUser(userData); // Guarda los datos del usuario después de iniciar sesión
   };
@@ -16,7 +24,7 @@ export const UserProvider = ({ children }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, login, logout }}>
+    <UserContext.Provider value={{ user, login, logout,updateUser }}>
       {children}
     </UserContext.Provider>
   );
