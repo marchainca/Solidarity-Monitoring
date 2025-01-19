@@ -51,7 +51,7 @@ const FaceRecognitionScreen = ({ navigation }) => {
 
       // Crear la solicitud al backend
       const requestData = {
-        imageBase64: "data:image/jpg;base64," + capturedPhoto.base64,
+        imageBase64: capturedPhoto.base64,
       };
 
       const response = await fetch(
@@ -72,22 +72,30 @@ const FaceRecognitionScreen = ({ navigation }) => {
 
       if (response.ok) {
         // Si el reconocimiento facial es exitoso, navegar al formulario con los datos recibidos
-        console.log("Reconocimiento exitoso")
-        navigation.navigate('AttendanceFormWithData', {
-          //recognizedData: responseData.content.data, // Datos retornados por el backend
-          recognizedData: {
-            firstName: responseData.content.data.name,
-            lastName: responseData.content.data.lastName,
-            age: responseData.content.data.birthdate,
-            documentType: responseData.content.data.documentType,
-            documentNumber: responseData.content.data.documentNumber,
-            email: responseData.content.data.email,
-            address: responseData.content.data.address,
-            neighborhood: responseData.content.data.neighborhood,
-            policy: responseData.content.data.policyNumber,
-            emergencyContact: responseData.content.data.emergencyContact,
-          },
-        });
+        console.log("Reconocimiento exitoso", responseData);
+
+        if (responseData.code == 1) {
+          navigation.navigate('AttendanceFormWithData', {
+            //recognizedData: responseData.content.data, // Datos retornados por el backend
+            recognizedData: {
+              firstName: responseData.content.data.name,
+              lastName: responseData.content.data.lastName,
+              age: responseData.content.data.birthdate,
+              documentType: responseData.content.data.documentType,
+              documentNumber: responseData.content.data.documentNumber,
+              email: responseData.content.data.email,
+              address: responseData.content.data.address,
+              neighborhood: responseData.content.data.neighborhood,
+              policy: responseData.content.data.policyNumber,
+              emergencyContact: responseData.content.data.emergencyContact,
+            },
+          });
+        } else {
+          Alert.alert('Error:', responseData.content.message );
+          //setErrorMessage(responseData.message || 'Error en el reconocimiento.');
+        }
+
+        
       } else {
         // Mostrar mensaje de error del backend
         //const errorData = await response.json();

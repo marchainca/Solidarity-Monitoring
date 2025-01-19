@@ -34,11 +34,13 @@ const LoginScreen = ({ navigation }) => {
         // { name, email, profileImageUrl, role }
         login({
           id: data.content.user.id,
+          idNumber:data.content.user.idNumber,
           name: data.content.user.name,
           email: data.content.user.email,
           role: data.content.user.role,
           profileImageUrl: data.content.user.urlImage,
           accessToken: data.content.accessToken,
+          birthdate:data.content.birthdate
         });
 
         // Navegar a la pantalla principal
