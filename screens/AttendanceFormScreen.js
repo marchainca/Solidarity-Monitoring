@@ -4,7 +4,7 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   Alert,
 } from 'react-native';
@@ -30,6 +30,8 @@ const AttendanceFormScreen = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetching, setIsFetching] = useState(false); // Estado para consultas
+  const [suggestions, setSuggestions] = useState([]); // Almacenar sugerencias del backend
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
@@ -42,6 +44,46 @@ const AttendanceFormScreen = ({ navigation }) => {
     }
   };
 
+  // Consultar al backend para buscar nombres
+  const fetchSuggestions = async (query) => {
+    if (!query) {
+      setSuggestions([]); // Limpiar sugerencias si no hay consulta
+      return;
+    }
+
+    try {
+      setIsFetching(true); // Inicia la consulta
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}recognition/search?name=${query}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${user.accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestions(data.content || []); // Almacenar las sugerencias en el estado
+      } else {
+        console.error('Error al buscar sugerencias:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error al buscar sugerencias:', error);
+    } finally {
+      setIsFetching(false); // Finaliza la consulta
+    }
+  };
+
+  // Seleccionar un nombre de las sugerencias
+  const handleSuggestionSelect = (item) => {
+    setFormData({
+      firstName: item.name.trim(),
+      lastName: item.lastName.trim(),
+      documentNumber: item.documentNumber.toString(),
+      reason: formData.reason, // Mantener el motivo si ya fue ingresado
+    });
+    setSuggestions([]); // Limpiar las sugerencias después de seleccionar
+  };
+
   const handleSubmit = async () => {
     if (!activity || !formData.firstName || !formData.lastName || !formData.documentNumber || !formData.reason) {
       Alert.alert('Error', 'Por favor complete todos los campos.');
@@ -49,7 +91,7 @@ const AttendanceFormScreen = ({ navigation }) => {
     }
 
     const requestData = {
-      identificacion: formData.documentNumber ,
+      identificacion: formData.documentNumber,
       actividad: activity,
       motivo: formData.reason,
       fecha: selectedDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
@@ -57,8 +99,7 @@ const AttendanceFormScreen = ({ navigation }) => {
 
     try {
       setIsSubmitting(true);
-      console.log("Data antes de enviar: ", requestData)
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL + "attendance/absences";
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}attendance/absences`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -84,79 +125,108 @@ const AttendanceFormScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Formulario de Inasistencia</Text>
+    <FlatList
+      data={[{ key: 'form' }]} // Representa todo el formulario como un único elemento
+      renderItem={() => (
+        <View style={styles.container}>
+          <Text style={styles.header}>Formulario de Inasistencia</Text>
 
-      {/* Selector de actividad */}
-      <Picker
-        selectedValue={activity}
-        style={styles.picker}
-        onValueChange={(itemValue) => setActivity(itemValue)}
-      >
-        <Picker.Item label="Seleccione una actividad" value="" />
-        <Picker.Item label="Entrenamiento Fútbol" value="Entrenamiento Fútbol" />
-        <Picker.Item label="Clases de Música" value="Clases de Música" />
-        <Picker.Item label="Taller de Pintura" value="Taller de Pintura" />
-      </Picker>
+          {/* Selector de actividad */}
+          <Picker
+            selectedValue={activity}
+            style={styles.picker}
+            onValueChange={(itemValue) => setActivity(itemValue)}
+          >
+            <Picker.Item label="Seleccione una actividad" value="" />
+            <Picker.Item label="Entrenamiento Fútbol" value="Entrenamiento Fútbol" />
+            <Picker.Item label="Clases de Música" value="Clases de Música" />
+            <Picker.Item label="Taller de Pintura" value="Taller de Pintura" />
+          </Picker>
 
-      {/* Formulario */}
-      <View style={styles.infoContainer}>
-        <Text style={styles.label}>Nombres:</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.firstName}
-          onChangeText={(text) => handleInputChange('firstName', text)}
-        />
-
-        <Text style={styles.label}>Apellidos:</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.lastName}
-          onChangeText={(text) => handleInputChange('lastName', text)}
-        />
-
-        <Text style={styles.label}>N° Documento:</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.documentNumber}
-          onChangeText={(text) => handleInputChange('documentNumber', text)}
-          keyboardType="numeric"
-        />
-
-        <Text style={styles.label}>Fecha:</Text>
-        <TouchableOpacity
-          style={styles.input}
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text>{selectedDate.toISOString().split('T')[0]}</Text>
-        </TouchableOpacity>
-        {showDatePicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
+          {/* Nombres */}
+          <Text style={styles.label}>Nombres:</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.firstName}
+            onChangeText={(text) => {
+              handleInputChange('firstName', text);
+              fetchSuggestions(text); // Consultar al backend
+            }}
           />
-        )}
-        <Text style={styles.label}>Motivo de la inasistencia:</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.reason}
-          onChangeText={(text) => handleInputChange('reason', text)}
-        />
-      </View>
+          {isFetching && <Text style={styles.loadingText}>Cargando...</Text>}
+          {suggestions.length > 0 && (
+            <FlatList
+              data={suggestions}
+              keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() => handleSuggestionSelect(item)}
+                >
+                  <Text style={styles.suggestionText}>{item.name.trim()}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          )}
 
-      {/* Botón para enviar */}
-      <TouchableOpacity
-        style={styles.submitButton}
-        onPress={handleSubmit}
-        disabled={isSubmitting}
-      >
-        <Text style={styles.submitButtonText}>
-          {isSubmitting ? 'Registrando...' : 'Registrar Inasistencia'}
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+          {/* Apellidos */}
+          <Text style={styles.label}>Apellidos:</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.lastName}
+            editable={false} // Campo no editable
+          />
+
+          {/* N° Documento */}
+          <Text style={styles.label}>N° Documento:</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.documentNumber}
+            keyboardType="numeric"
+            editable={false} // Campo no editable
+          />
+
+          {/* Fecha */}
+          <Text style={styles.label}>Fecha:</Text>
+          <TouchableOpacity
+            style={styles.input}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text>{selectedDate.toISOString().split('T')[0]}</Text>
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+            />
+          )}
+
+          {/* Motivo */}
+          <Text style={styles.label}>Motivo de la inasistencia:</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.reason}
+            onChangeText={(text) => handleInputChange('reason', text)}
+          />
+
+          {/* Botón para enviar */}
+          <TouchableOpacity
+            style={styles.submitButton}
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Registrando...' : 'Registrar Inasistencia'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      keyExtractor={(item) => item.key}
+      keyboardShouldPersistTaps="handled"
+    />
   );
 };
 
@@ -179,11 +249,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
   },
-  infoContainer: {
-    borderTopWidth: 1,
-    borderColor: '#ccc',
-    paddingTop: 10,
-  },
   label: {
     fontSize: 14,
     color: '#333',
@@ -197,8 +262,10 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingHorizontal: 10,
     marginBottom: 15,
-    justifyContent: 'center',
   },
+  loadingText: { fontStyle: 'italic', marginBottom: 10 },
+  suggestionItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' },
+  suggestionText: { fontSize: 16 },
   submitButton: {
     marginTop: 20,
     backgroundColor: '#3B82F6',

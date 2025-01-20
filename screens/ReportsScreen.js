@@ -6,77 +6,126 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  ScrollView,
-  ActivityIndicator,
+  KeyboardAvoidingView,
+  FlatList,
   Alert,
+  Platform,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { UserContext } from '../context/UserContext';
 
 const ReportsScreen = () => {
   const { user } = useContext(UserContext);
-  const [id, setId] = useState('');
-  const [name, setName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [profileImage, setProfileImage] = useState('');
-  const [report, setReport] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const fetchUserData = async () => {
-    console.log("Data de user:", user )
-    if (!id) {
-      Alert.alert('Error', 'Por favor introduce una identificación válida');
+  // Estados para el formulario
+  const [nameQuery, setNameQuery] = useState(''); // Búsqueda de nombres
+  const [id, setId] = useState(''); // Número de identificación
+  const [name, setName] = useState(''); // Nombre seleccionado
+  const [lastName, setLastName] = useState(''); // Apellido seleccionado
+  const [profileImage, setProfileImage] = useState(''); // Imagen del perfil
+  const [report, setReport] = useState(''); // Texto del reporte
+
+  // Estados para manejar la búsqueda
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false); // Cargando sugerencias
+  const [suggestions, setSuggestions] = useState([]); // Sugerencias del backend
+
+  // Estados para el envío del reporte
+  const [submittingReport, setSubmittingReport] = useState(false);
+
+  // Consultar al backend para autocompletar nombres
+  const fetchSuggestions = async (query) => {
+    if (!query) {
+      setSuggestions([]); // Limpiar sugerencias si no hay consulta
       return;
     }
 
-    setLoading(true);
     try {
-      const requestData = {
-        identificacion: id,
-      };
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL + "attendance/identify";
+      setLoadingSuggestions(true);
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}recognition/search?name=${query}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${user.accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestions(data.content || []); // Guardar las sugerencias
+      } else {
+        const errorData = await response.json();
+        console.error('Error al buscar sugerencias:', errorData.message);
+      }
+    } catch (error) {
+      console.error('Error al buscar sugerencias:', error);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  // Rellenar campos al seleccionar una sugerencia
+  const handleSuggestionSelect = (item) => {
+    setName(item.name.trim());
+    setLastName(item.lastName.trim());
+    setId(item.documentNumber);
+    setProfileImage(`data:image/jpeg;base64,${item.profileImage || ''}`); // Asignar imagen si está disponible
+    setSuggestions([]); // Limpiar las sugerencias
+    setNameQuery(item.name.trim()); // Rellenar el campo de búsqueda con el nombre seleccionado
+  };
+
+  // Manejar el envío del reporte
+  const handleReportSubmit = async () => {
+    if (!report) {
+      Alert.alert('Error', 'Por favor escribe el reporte antes de enviarlo.');
+      return;
+    }
+
+    const requestData = {
+      identificacion: id,
+      reporte: report,
+      creadoPor: user.name,
+    };
+
+    try {
+      setSubmittingReport(true);
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}reports/create`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${user.accessToken}`,
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${user.accessToken}`,
         },
         body: JSON.stringify(requestData),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        console.log("Data: ", data)
-        setName(data.content.name);
-        setLastName(data.content.lastName);
-        setProfileImage(`data:image/jpeg;base64,${data.content.profileImage}`);
-        setLoading(false);
+        Alert.alert('Éxito', 'Reporte enviado correctamente.');
+        Toast.show({
+          type: 'success',
+          text1: `${name} ${lastName}`,
+          text2: 'Ha realizado un reporte.',
+          visibilityTime: 8000,
+        });
+        setReport(''); // Limpiar campo de reporte
       } else {
         const errorData = await response.json();
-        Alert.alert('Error', `No se pudo obtener los datos: ${errorData.message}`);
-        setLoading(false);
+        Alert.alert('Error', `No se pudo enviar el reporte: ${errorData.message}`);
       }
     } catch (error) {
-      console.error('Error al obtener los datos del usuario:', error);
+      console.error('Error al enviar el reporte:', error);
       Alert.alert('Error', 'No se pudo conectar con el servidor.');
-      setLoading(false);
+    } finally {
+      setSubmittingReport(false);
     }
   };
 
-  const handleReportSubmit = () => {
-    Toast.show({
-      type: 'success',
-      text1: `${name} ${lastName}`,
-      text2: 'Ha realizado un reporte.',
-      visibilityTime: 8000,
-    });
-
-    setReport('');
-  };
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
       <Text style={styles.title}>Reporte</Text>
+
+      {/* Imagen de perfil */}
       {profileImage ? (
         <Image source={{ uri: profileImage }} style={styles.profileImage} />
       ) : (
@@ -85,33 +134,60 @@ const ReportsScreen = () => {
         </View>
       )}
 
+      {/* Campo Nombres */}
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Nombres</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Introduce el nombre"
+          value={nameQuery}
+          onChangeText={(text) => {
+            setNameQuery(text);
+            fetchSuggestions(text); // Buscar sugerencias al escribir
+          }}
+        />
+        {loadingSuggestions && <Text style={styles.loadingText}>Buscando...</Text>}
+        {suggestions.length > 0 && (
+          <FlatList
+            data={suggestions}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.suggestionItem}
+                onPress={() => handleSuggestionSelect(item)}
+              >
+                <Text style={styles.suggestionText}>
+                  {item.name.trim()} {item.lastName.trim()}
+                </Text>
+              </TouchableOpacity>
+            )}
+            style={styles.suggestionsList}
+            keyboardShouldPersistTaps="handled" // Permitir seleccionar mientras el teclado está abierto
+          />
+        )}
+      </View>
+
+      {/* Campo Identificación */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Identificación</Text>
         <TextInput
           style={styles.input}
-          placeholder="Introduce la identificación"
-          keyboardType="numeric"
           value={id}
-          onChangeText={setId}
+          editable={false} // Campo no editable
         />
-        <TouchableOpacity style={styles.fetchButton} onPress={fetchUserData}>
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Buscar</Text>
-          )}
-        </TouchableOpacity>
       </View>
 
+      {/* Campo Nombres y Apellidos */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Nombres y Apellidos</Text>
         <TextInput
           style={styles.input}
           value={`${name} ${lastName}`}
-          editable={false}
+          editable={false} // Campo no editable
         />
       </View>
 
+      {/* Campo Reporte */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Reporte</Text>
         <TextInput
@@ -132,16 +208,23 @@ const ReportsScreen = () => {
         />
       </View>
 
-      <TouchableOpacity style={styles.submitButton} onPress={handleReportSubmit}>
-        <Text style={styles.buttonText}>Enviar reporte</Text>
+      {/* Botón para enviar reporte */}
+      <TouchableOpacity
+        style={styles.submitButton}
+        onPress={handleReportSubmit}
+        disabled={submittingReport}
+      >
+        <Text style={styles.buttonText}>
+          {submittingReport ? 'Enviando...' : 'Enviar reporte'}
+        </Text>
       </TouchableOpacity>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    flex: 1,
     padding: 20,
     backgroundColor: '#f9f9f9',
   },
@@ -191,12 +274,17 @@ const styles = StyleSheet.create({
     height: 80,
     textAlignVertical: 'top',
   },
-  fetchButton: {
-    backgroundColor: '#2196f3',
+  suggestionsList: {
+    maxHeight: 150,
+    marginVertical: 5,
+  },
+  suggestionItem: {
     padding: 10,
-    borderRadius: 5,
-    marginTop: 10,
-    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
+  suggestionText: {
+    fontSize: 16,
   },
   submitButton: {
     backgroundColor: '#4caf50',
@@ -208,6 +296,10 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  loadingText: {
+    fontStyle: 'italic',
+    marginTop: 5,
   },
 });
 
