@@ -13,6 +13,10 @@ import AttendanceFormWithDataScreen from './screens/AttendanceFormWithDataScreen
 import Toast from 'react-native-toast-message';
 import UserManagementScreen from './screens/UserManagementScreen';
 import NewMemberScreen from './screens/NewMemberScreen'
+import ReportsScreen from './screens/ReportsScreen'
+import ReportsHomeScreen from './screens/ReportsHomeScreen'
+import ReportsListScreen from './screens/ReportsListScreen'
+import ReportDetailScreen from './screens/ReportDetailScreen'
 
 
 
@@ -32,6 +36,10 @@ export default function App() {
             <Stack.Screen name="AttendanceFormWithData" component={AttendanceFormWithDataScreen} />
             <Stack.Screen name="UserManagementScreen" component={UserManagementScreen} />
             <Stack.Screen name="NewMemberScreen" component={NewMemberScreen} />
+            <Stack.Screen name="ReportsHome" component={ReportsHomeScreen} options={{ title: 'Reportes' }} />
+            <Stack.Screen name="ReportsListScreen" component={ReportsListScreen} options={{ title: 'Lista de Reportes' }} />
+            <Stack.Screen name="ReportDetailScreen" component={ReportDetailScreen} options={{ title: 'Detalle del Reporte' }} />
+            <Stack.Screen name="ReportsScreen" component={ReportsScreen} options={{ title: 'Crear Reporte' }} />
           </Stack.Navigator>
         </NavigationContainer>
         <Toast />

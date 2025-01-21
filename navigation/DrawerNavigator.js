@@ -13,6 +13,7 @@ import AttendanceScreen from '../screens/AttendanceScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import ReportsHomeScreen from '../screens/ReportsHomeScreen' 
 
 const Drawer = createDrawerNavigator();
 
@@ -77,7 +78,8 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="Inicio" component={HomeScreen} />
       <Drawer.Screen name="Indicadores" component={IndicatorsScreen} />
       <Drawer.Screen name="Asistencias" component={AttendanceScreen} />
-      <Drawer.Screen name="Reportes" component={ReportsScreen} />
+      {/* <Drawer.Screen name="Reportes" component={ReportsScreen} /> */}
+      <Drawer.Screen name="Reportes" component={ReportsHomeScreen} />
       <Drawer.Screen name="Configuraciones" component={SettingsScreen} />
       <Drawer.Screen name="Editar Perfil" component={EditProfileScreen} />
     </Drawer.Navigator>
