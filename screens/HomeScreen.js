@@ -14,21 +14,21 @@ const HomeScreen = () => {
       <View style={styles.shortcutsContainer}>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('AttendanceScreen')}
+          onPress={() => navigation.navigate('Attendance')}
         >
           <Text style={styles.buttonText}>Registrar Asistencia</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('ReportScreen')}
+          onPress={() => navigation.navigate('ReportsHome')}
         >
           <Text style={styles.buttonText}>Crear Reporte</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('IndicatorsScreen')}
+          onPress={() => navigation.navigate('Indicators')}
         >
           <Text style={styles.buttonText}>Ver Indicadores</Text>
         </TouchableOpacity>

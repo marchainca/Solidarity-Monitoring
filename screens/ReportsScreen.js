@@ -18,16 +18,16 @@ const ReportsScreen = () => {
   const { user } = useContext(UserContext);
 
   // Estados para el formulario
-  const [nameQuery, setNameQuery] = useState(''); // Búsqueda de nombres
-  const [id, setId] = useState(''); // Número de identificación
-  const [name, setName] = useState(''); // Nombre seleccionado
-  const [lastName, setLastName] = useState(''); // Apellido seleccionado
-  const [profileImage, setProfileImage] = useState(''); // Imagen del perfil
-  const [report, setReport] = useState(''); // Texto del reporte
+  const [nameQuery, setNameQuery] = useState(''); 
+  const [id, setId] = useState(''); 
+  const [name, setName] = useState(''); 
+  const [lastName, setLastName] = useState(''); 
+  const [profileImage, setProfileImage] = useState(''); 
+  const [report, setReport] = useState(''); 
 
   // Estados para manejar la búsqueda
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false); // Cargando sugerencias
-  const [suggestions, setSuggestions] = useState([]); // Sugerencias del backend
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
 
   // Estados para el envío del reporte
   const [submittingReport, setSubmittingReport] = useState(false);
@@ -35,7 +35,7 @@ const ReportsScreen = () => {
   // Consultar al backend para autocompletar nombres
   const fetchSuggestions = async (query) => {
     if (!query) {
-      setSuggestions([]); // Limpiar sugerencias si no hay consulta
+      setSuggestions([]); 
       return;
     }
 
@@ -50,7 +50,7 @@ const ReportsScreen = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setSuggestions(data.content || []); // Guardar las sugerencias
+        setSuggestions(data.content || []); 
       } else {
         const errorData = await response.json();
         console.error('Error al buscar sugerencias:', errorData.message);
@@ -67,9 +67,9 @@ const ReportsScreen = () => {
     setName(item.name.trim());
     setLastName(item.lastName.trim());
     setId(item.documentNumber);
-    setProfileImage(`data:image/jpeg;base64,${item.profileImage || ''}`); // Asignar imagen si está disponible
-    setSuggestions([]); // Limpiar las sugerencias
-    setNameQuery(item.name.trim()); // Rellenar el campo de búsqueda con el nombre seleccionado
+    setProfileImage(`data:image/jpeg;base64,${item.profileImage || ''}`); 
+    setSuggestions([]); 
+    setNameQuery(item.name.trim());
   };
 
   // Manejar el envío del reporte
@@ -81,8 +81,9 @@ const ReportsScreen = () => {
 
     const requestData = {
       identificacion: id,
+      nombresApellidos: name + " " + lastName,
       reporte: report,
-      creadoPor: user.name,
+      createdBy: user.name,
     };
 
     try {
@@ -105,7 +106,14 @@ const ReportsScreen = () => {
           text2: 'Ha realizado un reporte.',
           visibilityTime: 8000,
         });
-        setReport(''); // Limpiar campo de reporte
+
+        // Limpiar todos los campos del formulario
+        setNameQuery('');
+        setId('');
+        setName('');
+        setLastName('');
+        setProfileImage('');
+        setReport('');
       } else {
         const errorData = await response.json();
         Alert.alert('Error', `No se pudo enviar el reporte: ${errorData.message}`);
@@ -143,7 +151,7 @@ const ReportsScreen = () => {
           value={nameQuery}
           onChangeText={(text) => {
             setNameQuery(text);
-            fetchSuggestions(text); // Buscar sugerencias al escribir
+            fetchSuggestions(text); 
           }}
         />
         {loadingSuggestions && <Text style={styles.loadingText}>Buscando...</Text>}
@@ -162,7 +170,7 @@ const ReportsScreen = () => {
               </TouchableOpacity>
             )}
             style={styles.suggestionsList}
-            keyboardShouldPersistTaps="handled" // Permitir seleccionar mientras el teclado está abierto
+            keyboardShouldPersistTaps="handled" 
           />
         )}
       </View>
@@ -173,7 +181,7 @@ const ReportsScreen = () => {
         <TextInput
           style={styles.input}
           value={id}
-          editable={false} // Campo no editable
+          editable={false} 
         />
       </View>
 
@@ -183,7 +191,7 @@ const ReportsScreen = () => {
         <TextInput
           style={styles.input}
           value={`${name} ${lastName}`}
-          editable={false} // Campo no editable
+          editable={false} 
         />
       </View>
 

@@ -20,7 +20,15 @@ const AttendanceFormScreen = ({ navigation }) => {
   }, []);
 
   const { user } = useContext(UserContext);
-  const [activity, setActivity] = useState('');
+  const [programs, setPrograms] = useState([]); // List of programs
+  const [program, setProgram] = useState(''); // Selected program
+
+  const [subprograms, setSubprograms] = useState([]); // List of subprograms
+  const [subprogram, setSubprogram] = useState(''); // Selected subprogram
+
+  const [activities, setActivities] = useState({}); // Activities mapped to subprograms
+  const [activity, setActivity] = useState(''); // Selected activity
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -30,11 +38,106 @@ const AttendanceFormScreen = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isFetching, setIsFetching] = useState(false); // Estado para consultas
-  const [suggestions, setSuggestions] = useState([]); // Almacenar sugerencias del backend
+
+  const [suggestions, setSuggestions] = useState([]); // Suggestions for names
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false); // Loading state for suggestions
+
+  // Fetch programs from the backend
+  const fetchPrograms = async () => {
+    try {
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}activities/programs`;
+      const response = await fetch(apiUrl, {
+        headers: { Authorization: `Bearer ${user.accessToken}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPrograms(data.content.getPrograms || []); // Extract programs from response
+      } else {
+        console.error('Error fetching programs:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error fetching programs:', error);
+    }
+  };
+
+  // Fetch subprograms and activities based on selected program
+  const fetchSubprogramsAndActivities = async (programName) => {
+    try {
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}activities/${encodeURIComponent(programName)}`;
+      const response = await fetch(apiUrl, {
+        headers: { Authorization: `Bearer ${user.accessToken}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const subprogramsData = Object.keys(data.content || {}); // Extract subprogram names
+        setSubprograms(subprogramsData); // Update subprograms
+        setActivities(data.content || {}); // Store all subprogram activities in a single state
+        setActivity(''); // Reset activity selection
+        setSubprogram(''); // Reset subprogram selection
+      } else {
+        console.error('Error fetching subprograms and activities:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error fetching subprograms and activities:', error);
+    }
+  };
+
+  // Fetch suggestions for names from the backend
+  const fetchSuggestions = async (query) => {
+    if (!query) {
+      setSuggestions([]); // Clear suggestions if query is empty
+      return;
+    }
+
+    try {
+      setLoadingSuggestions(true);
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}recognition/search?name=${query}`;
+      const response = await fetch(apiUrl, {
+        headers: { Authorization: `Bearer ${user.accessToken}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestions(data.content || []); // Store suggestions
+      } else {
+        console.error('Error fetching suggestions:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const handleProgramChange = (selectedProgram) => {
+    setProgram(selectedProgram);
+    fetchSubprogramsAndActivities(selectedProgram); // Fetch subprograms and activities for the selected program
+  };
+
+  const handleSubprogramChange = (selectedSubprogram) => {
+    setSubprogram(selectedSubprogram);
+    setActivity(''); // Reset activity selection when subprogram changes
+  };
+
+  const handleSuggestionSelect = (item) => {
+    setFormData({
+      firstName: item.name.trim(),
+      lastName: item.lastName.trim(),
+      documentNumber: item.documentNumber.toString(),
+      reason: formData.reason, // Keep existing reason
+    });
+    setSuggestions([]); // Clear suggestions
+  };
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
+
+    // If the "Nombres" field is being edited, trigger name search
+    if (field === 'firstName') {
+      fetchSuggestions(value);
+    }
   };
 
   const handleDateChange = (event, date) => {
@@ -44,57 +147,19 @@ const AttendanceFormScreen = ({ navigation }) => {
     }
   };
 
-  // Consultar al backend para buscar nombres
-  const fetchSuggestions = async (query) => {
-    if (!query) {
-      setSuggestions([]); // Limpiar sugerencias si no hay consulta
-      return;
-    }
-
-    try {
-      setIsFetching(true); // Inicia la consulta
-      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}recognition/search?name=${query}`;
-      const response = await fetch(apiUrl, {
-        headers: {
-          Authorization: `Bearer ${user.accessToken}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSuggestions(data.content || []); // Almacenar las sugerencias en el estado
-      } else {
-        console.error('Error al buscar sugerencias:', await response.text());
-      }
-    } catch (error) {
-      console.error('Error al buscar sugerencias:', error);
-    } finally {
-      setIsFetching(false); // Finaliza la consulta
-    }
-  };
-
-  // Seleccionar un nombre de las sugerencias
-  const handleSuggestionSelect = (item) => {
-    setFormData({
-      firstName: item.name.trim(),
-      lastName: item.lastName.trim(),
-      documentNumber: item.documentNumber.toString(),
-      reason: formData.reason, // Mantener el motivo si ya fue ingresado
-    });
-    setSuggestions([]); // Limpiar las sugerencias después de seleccionar
-  };
-
   const handleSubmit = async () => {
-    if (!activity || !formData.firstName || !formData.lastName || !formData.documentNumber || !formData.reason) {
+    if (!program || !subprogram || !activity || !formData.firstName || !formData.lastName || !formData.documentNumber || !formData.reason) {
       Alert.alert('Error', 'Por favor complete todos los campos.');
       return;
     }
 
     const requestData = {
       identificacion: formData.documentNumber,
+      programa: program,
+      subprograma: subprogram,
       actividad: activity,
       motivo: formData.reason,
-      fecha: selectedDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
+      fecha: selectedDate.toISOString().split('T')[0],
     };
 
     try {
@@ -124,87 +189,92 @@ const AttendanceFormScreen = ({ navigation }) => {
     }
   };
 
+  useEffect(() => {
+    fetchPrograms(); // Load programs on mount
+  }, []);
+
   return (
     <FlatList
-      data={[{ key: 'form' }]} // Representa todo el formulario como un único elemento
+      data={[{ key: 'form' }]}
       renderItem={() => (
         <View style={styles.container}>
-          <Text style={styles.header}>Formulario de Inasistencia</Text>
+          <Text style={styles.header}>Formulario de Inasistencias</Text>
 
-          {/* Selector de actividad */}
+          {/* Program Selector */}
+          <Picker
+            selectedValue={program}
+            style={styles.picker}
+            onValueChange={(itemValue) => handleProgramChange(itemValue)}
+          >
+            <Picker.Item label="Seleccione un programa" value="" />
+            {programs.map((programName, index) => (
+              <Picker.Item key={index} label={programName} value={programName} />
+            ))}
+          </Picker>
+
+          {/* Subprogram Selector */}
+          <Picker
+            selectedValue={subprogram}
+            style={styles.picker}
+            onValueChange={(itemValue) => handleSubprogramChange(itemValue)}
+            enabled={!!program}
+          >
+            <Picker.Item label="Seleccione un subprograma" value="" />
+            {subprograms.map((subprogramName, index) => (
+              <Picker.Item key={index} label={subprogramName} value={subprogramName} />
+            ))}
+          </Picker>
+
+          {/* Activity Selector */}
           <Picker
             selectedValue={activity}
             style={styles.picker}
             onValueChange={(itemValue) => setActivity(itemValue)}
+            enabled={!!subprogram}
           >
             <Picker.Item label="Seleccione una actividad" value="" />
-            <Picker.Item label="Entrenamiento Fútbol" value="Entrenamiento Fútbol" />
-            <Picker.Item label="Clases de Música" value="Clases de Música" />
-            <Picker.Item label="Taller de Pintura" value="Taller de Pintura" />
+            {(activities[subprogram] || []).map((activityName, index) => (
+              <Picker.Item key={index} label={activityName} value={activityName} />
+            ))}
           </Picker>
 
-          {/* Nombres */}
+          {/* Form Fields */}
           <Text style={styles.label}>Nombres:</Text>
           <TextInput
             style={styles.input}
             value={formData.firstName}
-            onChangeText={(text) => {
-              handleInputChange('firstName', text);
-              fetchSuggestions(text); // Consultar al backend
-            }}
+            onChangeText={(text) => handleInputChange('firstName', text)}
+            placeholder="Introduce el nombre"
           />
-          {isFetching && <Text style={styles.loadingText}>Cargando...</Text>}
+          {loadingSuggestions && <Text style={styles.loadingText}>Buscando...</Text>}
           {suggestions.length > 0 && (
             <FlatList
               data={suggestions}
               keyExtractor={(item) => item.id}
-              keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.suggestionItem}
-                  onPress={() => handleSuggestionSelect(item)}
-                >
-                  <Text style={styles.suggestionText}>{item.name.trim()}</Text>
+                <TouchableOpacity style={styles.suggestionItem} onPress={() => handleSuggestionSelect(item)}>
+                  <Text>{item.name.trim()} {item.lastName.trim()}</Text>
                 </TouchableOpacity>
               )}
+              style={styles.suggestionsList}
+              keyboardShouldPersistTaps="handled"
             />
           )}
 
-          {/* Apellidos */}
           <Text style={styles.label}>Apellidos:</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.lastName}
-            editable={false} // Campo no editable
-          />
+          <TextInput style={styles.input} value={formData.lastName} editable={false} />
 
-          {/* N° Documento */}
           <Text style={styles.label}>N° Documento:</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.documentNumber}
-            keyboardType="numeric"
-            editable={false} // Campo no editable
-          />
+          <TextInput style={styles.input} value={formData.documentNumber} editable={false} />
 
-          {/* Fecha */}
           <Text style={styles.label}>Fecha:</Text>
-          <TouchableOpacity
-            style={styles.input}
-            onPress={() => setShowDatePicker(true)}
-          >
+          <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
             <Text>{selectedDate.toISOString().split('T')[0]}</Text>
           </TouchableOpacity>
           {showDatePicker && (
-            <DateTimePicker
-              value={selectedDate}
-              mode="date"
-              display="default"
-              onChange={handleDateChange}
-            />
+            <DateTimePicker value={selectedDate} mode="date" display="default" onChange={handleDateChange} />
           )}
 
-          {/* Motivo */}
           <Text style={styles.label}>Motivo de la inasistencia:</Text>
           <TextInput
             style={styles.input}
@@ -212,15 +282,8 @@ const AttendanceFormScreen = ({ navigation }) => {
             onChangeText={(text) => handleInputChange('reason', text)}
           />
 
-          {/* Botón para enviar */}
-          <TouchableOpacity
-            style={styles.submitButton}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          >
-            <Text style={styles.submitButtonText}>
-              {isSubmitting ? 'Registrando...' : 'Registrar Inasistencia'}
-            </Text>
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={isSubmitting}>
+            <Text style={styles.submitButtonText}>{isSubmitting ? 'Registrando...' : 'Registrar Inasistencia'}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -263,9 +326,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 15,
   },
-  loadingText: { fontStyle: 'italic', marginBottom: 10 },
-  suggestionItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' },
-  suggestionText: { fontSize: 16 },
+  suggestionsList: {
+    maxHeight: 150,
+    marginVertical: 5,
+  },
+  suggestionItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
   submitButton: {
     marginTop: 20,
     backgroundColor: '#3B82F6',

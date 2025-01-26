@@ -17,6 +17,7 @@ import ReportsScreen from './screens/ReportsScreen'
 import ReportsHomeScreen from './screens/ReportsHomeScreen'
 import ReportsListScreen from './screens/ReportsListScreen'
 import ReportDetailScreen from './screens/ReportDetailScreen'
+import IndicatorsScreen from './screens/IndicatorsScreen'
 
 
 
@@ -30,6 +31,7 @@ export default function App() {
           <Stack.Navigator initialRouteName="Login">          
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />          
             <Stack.Screen name="Home" component={DrawerNavigator} options={{ headerShown: false }} />
+            <Stack.Screen name="Indicators" component={IndicatorsScreen} />
             <Stack.Screen name="Attendance" component={AttendanceScreen} />
             <Stack.Screen name="FaceRecognition" component={FaceRecognitionScreen} />
             <Stack.Screen name="AttendanceForm" component={AttendanceFormScreen} />

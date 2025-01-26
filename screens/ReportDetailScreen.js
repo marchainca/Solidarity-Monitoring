@@ -3,12 +3,14 @@ import { View, Text, StyleSheet } from 'react-native';
 
 const ReportDetailScreen = ({ route }) => {
   const { report } = route.params;
-
+  console.log("Contenido de los reportes: ", report)
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{report.name}</Text>
-      <Text style={styles.detail}>ID: {report.id}</Text>
-      <Text style={styles.detail}>Reporte: {report.report}</Text>
+      <Text style={styles.title}>{report.nombresApellidos}</Text>
+      <Text style={styles.detail}>Número de Indetificación: {report.identificacion}</Text>
+      <Text style={styles.detail}>Creado el: {report.createdAt}</Text>
+      <Text style={styles.detail}>Creado por: {report.createdBy}</Text>
+      <Text style={styles.detail}>Reporte: {report.reporte}</Text>
     </View>
   );
 };

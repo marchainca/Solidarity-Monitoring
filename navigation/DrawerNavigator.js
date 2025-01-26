@@ -80,7 +80,7 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="Asistencias" component={AttendanceScreen} />
       {/* <Drawer.Screen name="Reportes" component={ReportsScreen} /> */}
       <Drawer.Screen name="Reportes" component={ReportsHomeScreen} />
-      <Drawer.Screen name="Configuraciones" component={SettingsScreen} />
+      <Drawer.Screen name="Admin" component={SettingsScreen} />
       <Drawer.Screen name="Editar Perfil" component={EditProfileScreen} />
     </Drawer.Navigator>
   );

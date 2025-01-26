@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 const SettingsScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Configuraciones</Text>
+      <Text style={styles.title}>Crear Usuarios y/o Integrantes</Text>
 
       <TouchableOpacity
         style={styles.button}

@@ -1,21 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 
 const ReportsListScreen = ({ navigation }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [reports, setReports] = useState([]);
+  const [reports, setReports] = useState([]); // Lista de reportes cargados desde el backend
+  const [loading, setLoading] = useState(false); // Indicador de carga
 
-  // Simular carga de reportes
+  // Obtener reportes desde el backend
+  const fetchReports = async () => {
+    setLoading(true);
+    try {
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}reports/recent`;
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setReports(data.content || []); // Asignar los reportes obtenidos
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Error', `No se pudieron obtener los reportes: ${errorData.message}`);
+      }
+    } catch (error) {
+      console.error('Error al obtener reportes:', error);
+      Alert.alert('Error', 'No se pudo conectar con el servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar reportes al montar el componente
   useEffect(() => {
-    // Aquí puedes reemplazar con una llamada al backend
-    setReports([
-      { id: '1', name: 'Juan Perez', report: 'Reporte 1' },
-      { id: '2', name: 'María López', report: 'Reporte 2' },
-    ]);
+    fetchReports();
   }, []);
 
-  const filteredReports = reports.filter(report =>
-    report.name.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filtrar reportes según el término de búsqueda
+  const filteredReports = reports.filter((report) =>
+    report.nombresApellidos.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -27,19 +61,23 @@ const ReportsListScreen = ({ navigation }) => {
         onChangeText={setSearchTerm}
       />
 
-      <FlatList
-        data={filteredReports}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.reportItem}
-            onPress={() => navigation.navigate('ReportDetailScreen', { report: item })}
-          >
-            <Text style={styles.reportName}>{item.name}</Text>
-            <Text style={styles.reportDetail}>{item.report}</Text>
-          </TouchableOpacity>
-        )}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#0000ff" />
+      ) : (
+        <FlatList
+          data={filteredReports}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.reportItem}
+              onPress={() => navigation.navigate('ReportDetailScreen', { report: item })}
+            >
+              <Text style={styles.reportName}>{item.nombresApellidos}</Text>
+              <Text style={styles.reportDetail}>{item.reporte}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      )}
     </View>
   );
 };
