@@ -42,7 +42,7 @@ const AttendanceFormScreen = ({ navigation }) => {
   const [suggestions, setSuggestions] = useState([]); // Suggestions for names
   const [loadingSuggestions, setLoadingSuggestions] = useState(false); // Loading state for suggestions
 
-  // Fetch programs from the backend
+  
   const fetchPrograms = async () => {
     try {
       const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}activities/programs`;
@@ -52,7 +52,7 @@ const AttendanceFormScreen = ({ navigation }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setPrograms(data.content.getPrograms || []); // Extract programs from response
+        setPrograms(data.content.getPrograms || []); 
       } else {
         console.error('Error fetching programs:', await response.text());
       }
@@ -61,7 +61,7 @@ const AttendanceFormScreen = ({ navigation }) => {
     }
   };
 
-  // Fetch subprograms and activities based on selected program
+  
   const fetchSubprogramsAndActivities = async (programName) => {
     try {
       const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}activities/${encodeURIComponent(programName)}`;
@@ -72,8 +72,8 @@ const AttendanceFormScreen = ({ navigation }) => {
       if (response.ok) {
         const data = await response.json();
         const subprogramsData = Object.keys(data.content || {}); // Extract subprogram names
-        setSubprograms(subprogramsData); // Update subprograms
-        setActivities(data.content || {}); // Store all subprogram activities in a single state
+        setSubprograms(subprogramsData); 
+        setActivities(data.content || {}); 
         setActivity(''); // Reset activity selection
         setSubprogram(''); // Reset subprogram selection
       } else {
